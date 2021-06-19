@@ -1,33 +1,34 @@
-import socket,cv2, pickle,struct
+#Import the required libraries
+import socket
+import cv2
+import numpy as np
 
-#create the socket for client
-client_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-host_ip = '192.168.56.1' 
-port = 2222
-print("Socket Created")
+#create socket
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
-#connect with server 
-client_socket.connect((host_ip,port))
-data = b""
-payload_size = struct.calcsize("Q")
-print("Socket Accept")
+#connect to server ip's and port no
+s.connect(("192.168.56.1",1234))
 
-#capture the reciving video
+#Connect your laptop's webcam
+cap=cv2.VideoCapture(0)
+
+#Encode the photo and send it
+#Decode the recieved stream of images and display it.
 while True:
-    while len(data) < payload_size:
-        packet = client_socket.recv(4*1024) # 4K
-        if not packet: break
-        data+=packet
-    packed_msg_size = data[:payload_size]
-    data = data[payload_size:]
-    msg_size = struct.unpack("Q",packed_msg_size)[0]
-    while len(data) < msg_size:
-        data += client_socket.recv(4*1024)
-    frame_data = data[:msg_size]
-    data  = data[msg_size:]
-    frame = pickle.loads(frame_data)
-    cv2.imshow("RECEIVING VIDEO",frame)
-    key = cv2.waitKey(1) & 0xFF
-    if key  == ord('q'):
-        break
-client_socket.close()
+
+    ret, frame = cap.read()
+    photobytes = cv2.imencode('.jpg',frame)[1].tobytes()
+    s.sendall(photobytes)
+
+    data = s.recv(10000000)  
+    array= np.fromstring(data,np.uint8)
+    img = cv2.imdecode(array,-1)
+   
+    if type(img) is type(None):
+        pass
+    else:
+        cv2.imshow("Clientscreen",img)
+        if cv2.waitKey(10)==13:
+            break
+
+cv2.destroyAllWindows()
