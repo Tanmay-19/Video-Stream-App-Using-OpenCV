@@ -1,36 +1,36 @@
-import socket, cv2, pickle,struct
+#Import Required Libraries
+import socket
+import urllib.request
+import cv2
+import numpy as np
 
-#create socket instance
-server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-host_name  = socket.gethostname()
-host_ip = socket.gethostbyname(host_name)
-print('HOST IP:',host_ip)
-port = 2222
-socket_address = ('192.168.56.1',port)
-print("Socket Created")
+#Create Socket with the help of tcp protocol
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+ip="192.168.56.1"
+port=1234
 
-#bind the socket 
-server_socket.bind(socket_address)
-print("Socket Bind Successfully")
+#Bind IP and Port no
+s.bind((ip,port))
+s.listen() 
+csession,addr=s.accept()
 
-#To make socket ready for accepting connections. 
-server_socket.listen(5)
-print("LISTENING AT:",socket_address)
-
-#To accept the connection request from the client.
-print("Socket Accept")
+#get url from ip webcam
+url="http://192.168.74.141:8080/shot.jpg?rnd=444485"
+#Create a stream of Images using while loop
+#After recieving decode it and make sure while sending encode it into byte array 
 while True:
-    client_socket,addr = server_socket.accept()
-    print('GOT CONNECTION FROM:',addr)
-    if client_socket:
-        vid = cv2.VideoCapture(0)
-        
-        while(vid.isOpened()):
-            img,frame = vid.read()
-            a = pickle.dumps(frame)
-            message = struct.pack("Q",len(a))+a
-            client_socket.sendall(message)
-            cv2.imshow('TRANSMITTING VIDEO',frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key ==ord('q'):
-                client_socket.close()
+    data = csession.recv(10000000) 
+    array= np.fromstring(data,np.uint8)
+    photo = cv2.imdecode(array,cv2.IMREAD_COLOR)  
+    if type(photo) is type(None):
+        pass
+    else:
+        cv2.imshow("Server screen",photo)
+        if cv2.waitKey(10)==13:
+            break
+            
+    imgResp = urllib.request.urlopen(url)
+    x = imgResp.read()
+    csession.sendall(x)
+
+cv2.destroyAllWindows()
